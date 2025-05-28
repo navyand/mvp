@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salus-api-deployment
+  labels:
+    app: salus-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: salus-api
+  template:
+    metadata:
+      labels:
+        app: salus-api
+    spec:
+      containers:
+        - name: salus-api
+          image: us-central1-docker.pkg.dev/virtual-muse-460520-u9/salus-repo/salus-api:latest
+          ports:
+            - containerPort: 8080
