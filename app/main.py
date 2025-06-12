@@ -1,36 +1,26 @@
-import os
-import time
 from flask import Flask
+import os
 from google.cloud import monitoring_v3
 from google.cloud.monitoring_v3 import types
 from google.protobuf.timestamp_pb2 import Timestamp
+from datetime import datetime
+import time
 
 app = Flask(__name__)
-visit_count = 0  # Contador global de visitas
-
+contador_visitas = 0
 
 def enviar_metricas():
-    global visit_count
-    visit_count += 1
+    global contador_visitas
+    contador_visitas += 1  # Incrementa contador
 
-    # Cliente de Cloud Monitoring
+    # Verifica si está definida la variable de entorno
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "virtual-muse-460520-u9")
     client = monitoring_v3.MetricServiceClient()
-
-    # ID del proyecto desde variable de entorno
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-
-    if not project_id:
-        raise EnvironmentError(
-            "GOOGLE_CLOUD_PROJECT no está definido en las variables de entorno."
-        )
-
-    # Nombre del proyecto en formato requerido
     project_name = f"projects/{project_id}"
 
     series = monitoring_v3.TimeSeries()
-    series.metric.type = "custom.googleapis.com/salus_mvp/visitas"
+    series.metric.type = "custom.googleapis.com/solicitudes"
     series.resource.type = "global"
-    series.resource.labels["project_id"] = project_id
 
     now = time.time()
     seconds = int(now)
@@ -39,17 +29,16 @@ def enviar_metricas():
     interval = monitoring_v3.TimeInterval(
         end_time=Timestamp(seconds=seconds, nanos=nanos)
     )
-    point = monitoring_v3.Point(
-        {"interval": interval, "value": {"int64_value": visit_count}}
-    )
+    point = monitoring_v3.TypedValue(int64_value=contador_visitas)
+    series.points.append(monitoring_v3.Point(interval=interval, value=point))
 
-    series.points.append(point)
+    series.resource.labels["project_id"] = project_id
 
-    # Enviar la serie
     client.create_time_series(name=project_name, time_series=[series])
-
+    print(f"[INFO] Métrica enviada. Contador actual: {contador_visitas}")
 
 @app.route("/")
 def hello():
     enviar_metricas()
-    return f"¡Hola desde Salus MVP! Visitas: {visit_count}"
+    return f"¡Hola desde Salus! Visitas: {contador_visitas}"
+
