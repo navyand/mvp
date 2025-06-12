@@ -1,44 +1,47 @@
-ffrom flask import Flask
-import time
-import logging
+from flask import Flask
+import os
 from google.cloud import monitoring_v3
+import logging
 
 app = Flask(__name__)
 
-# Configura el logging para que los mensajes se vean en Cloud Logging
-logging.basicConfig(level=logging.INFO)
-
-# ID de tu proyecto en GCP
-PROJECT_ID = "virtual-muse-460520-u9"
 
 def enviar_metricas():
-    logging.info("Enviando métrica personalizada desde salus-mvp")
+    logging.basicConfig(level=logging.INFO)
+    print("⚙️ Ejecutando función enviar_metricas()")
+    logging.info("⚙️ Ejecutando función enviar_metricas()")
 
-    client = monitoring_v3.MetricServiceClient()
-    project_name = f"projects/{PROJECT_ID}"
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if not project_id:
+        logging.warning("❌ No se encontró GOOGLE_CLOUD_PROJECT")
+        return
 
-    series = monitoring_v3.TimeSeries()
-    series.metric.type = "custom.googleapis.com/salus/mvp_availability"
-    series.resource.type = "global"
-    series.resource.labels["project_id"] = PROJECT_ID
+    try:
+        client = monitoring_v3.MetricServiceClient()
+        project_name = f"projects/{project_id}"
 
-    # Punto de datos con valor 1 (disponibilidad OK)
-    point = monitoring_v3.Point()
-    point.value.double_value = 1.0
-    now = time.time()
-    point.interval.end_time.seconds = int(now)
-    point.interval.end_time.nanos = int((now - int(now)) * 10**9)
+        series = monitoring_v3.TimeSeries()
+        series.metric.type = "custom.googleapis.com/salus/mvp_availability"
+        series.resource.type = "global"
+        series.resource.labels["project_id"] = project_id
 
-    series.points = [point]
+        point = monitoring_v3.Point()
+        point.value.double_value = 1.0
+        point.interval.end_time.GetCurrentTime()
+        series.points = [point]
 
-    # Envía la serie a Cloud Monitoring
-    client.create_time_series(name=project_name, time_series=[series])
-    logging.info("✅ Métrica personalizada enviada correctamente.")
+        logging.info("📤 Enviando métrica personalizada desde salus-mvp")
+        client.create_time_series(name=project_name, time_series=[series])
+        logging.info("✅ Métrica personalizada enviada correctamente.")
+    except Exception as e:
+        logging.error(f"❌ Error al enviar métrica: {e}")
+
 
 @app.route("/")
 def hello():
     enviar_metricas()
     return "¡Salus MVP funcionando en la nube!"
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
