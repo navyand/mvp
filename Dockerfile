@@ -1,5 +1,6 @@
 FROM python:3.10-slim
 
+
 WORKDIR /app
 
 # Copia primero los archivos necesarios para instalar dependencias
@@ -12,6 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ /app
 
 # Comando de arranque
-CMD ["python", "main.py"]
-
+# CMD ["python", "main.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "main:app"]
 
