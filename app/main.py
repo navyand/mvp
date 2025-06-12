@@ -21,12 +21,7 @@ def enviar_metricas():
     series.metric.type = "custom.googleapis.com/salus_demo/request_count"
     series.resource.type = "global"
     series.resource.labels["project_id"] = project
-    series.points.add(
-        value=monitoring_v3.TypedValue(int64_value=1),
-        interval=monitoring_v3.TimeInterval(
-            end_time={"seconds": int(monitoring_v3.types.Timestamp().seconds)},
-        ),
-    )
+    series.points.append(monitoring_v3.Point({"interval": interval, "value": point}))
 
     client.create_time_series(name=project_name, time_series=[series])
 
