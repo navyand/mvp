@@ -1,41 +1,37 @@
 from flask import Flask
-import os
 from google.cloud import monitoring_v3
+from google.auth import default
+import os
 import logging
 
 app = Flask(__name__)
+
+# Configura logging para que se vea en Cloud Logging
 logging.basicConfig(level=logging.INFO)
+
+# Detecta el ID del proyecto automáticamente
+_, project = default()
 
 
 def enviar_metricas():
-    logging.info("⚙️ Ejecutando función enviar_metricas()")
-
     client = monitoring_v3.MetricServiceClient()
-    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
-    project_name = f"projects/{project_id}"
+    project_name = f"projects/{project}"
 
     series = monitoring_v3.TimeSeries()
-    series.metric.type = "custom.googleapis.com/salus/mvp_availability"
+    series.metric.type = "custom.googleapis.com/salus_demo/request_count"
     series.resource.type = "global"
-    series.resource.labels["project_id"] = project_id
-    series.metric.labels["version"] = "v1"
+    series.resource.labels["project_id"] = project
+    series.points.add(
+        value=monitoring_v3.TypedValue(int64_value=1),
+        interval=monitoring_v3.TimeInterval(
+            end_time={"seconds": int(monitoring_v3.types.Timestamp().seconds)},
+        ),
+    )
 
-    now = monitoring_v3.types.TimeInterval()
-    from google.protobuf.timestamp_pb2 import Timestamp
-    import time
-
-    now.end_time.seconds = int(time.time())
-    now.end_time.nanos = 0
-
-    point = monitoring_v3.types.Point()
-    point.interval = now
-    point.value.double_value = 1.0  # disponibilidad 100%
-
-    series.points = [point]
     client.create_time_series(name=project_name, time_series=[series])
 
-    logging.info("📤 Enviando métrica personalizada desde salus-mvp")
-    logging.info("✅ Métrica personalizada enviada correctamente.")
+    # Forzar salida para ver en logs
+    logging.info("✅ Métrica enviada a Cloud Monitoring")
 
 
 @app.route("/")
