@@ -4,37 +4,38 @@ from google.cloud import monitoring_v3
 import logging
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def enviar_metricas():
-    logging.basicConfig(level=logging.INFO)
-    print("⚙️ Ejecutando función enviar_metricas()")
     logging.info("⚙️ Ejecutando función enviar_metricas()")
 
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-    if not project_id:
-        logging.warning("❌ No se encontró GOOGLE_CLOUD_PROJECT")
-        return
+    client = monitoring_v3.MetricServiceClient()
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    project_name = f"projects/{project_id}"
 
-    try:
-        client = monitoring_v3.MetricServiceClient()
-        project_name = f"projects/{project_id}"
+    series = monitoring_v3.TimeSeries()
+    series.metric.type = "custom.googleapis.com/salus/mvp_availability"
+    series.resource.type = "global"
+    series.resource.labels["project_id"] = project_id
+    series.metric.labels["version"] = "v1"
 
-        series = monitoring_v3.TimeSeries()
-        series.metric.type = "custom.googleapis.com/salus/mvp_availability"
-        series.resource.type = "global"
-        series.resource.labels["project_id"] = project_id
+    now = monitoring_v3.types.TimeInterval()
+    from google.protobuf.timestamp_pb2 import Timestamp
+    import time
 
-        point = monitoring_v3.Point()
-        point.value.double_value = 1.0
-        point.interval.end_time.GetCurrentTime()
-        series.points = [point]
+    now.end_time.seconds = int(time.time())
+    now.end_time.nanos = 0
 
-        logging.info("📤 Enviando métrica personalizada desde salus-mvp")
-        client.create_time_series(name=project_name, time_series=[series])
-        logging.info("✅ Métrica personalizada enviada correctamente.")
-    except Exception as e:
-        logging.error(f"❌ Error al enviar métrica: {e}")
+    point = monitoring_v3.types.Point()
+    point.interval = now
+    point.value.double_value = 1.0  # disponibilidad 100%
+
+    series.points = [point]
+    client.create_time_series(name=project_name, time_series=[series])
+
+    logging.info("📤 Enviando métrica personalizada desde salus-mvp")
+    logging.info("✅ Métrica personalizada enviada correctamente.")
 
 
 @app.route("/")
