@@ -17,3 +17,5 @@ steps:
 images:
   - 'us-central1-docker.pkg.dev/virtual-muse-460520-u9/salus-repo/salus-api:latest'
 
+options:
+  logging: CLOUD_LOGGING_ONLY
