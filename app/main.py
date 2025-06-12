@@ -1,16 +1,19 @@
 from flask import Flask
 from google.cloud import monitoring_v3
 import time
+import os
 
 app = Flask(__name__)
 
 
 def enviar_metricas():
     client = monitoring_v3.MetricServiceClient()
-    # Obtener el ID del proyecto desde el cliente (sin depender de variables de entorno)
-    project_id = client.project.split("/")[-1]
+
+    # Obtener el ID del proyecto desde la variable de entorno (Cloud Run la define automáticamente)
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "default-project")
     project_name = f"projects/{project_id}"
 
+    # Crear la serie temporal
     series = monitoring_v3.TimeSeries()
     series.metric.type = "custom.googleapis.com/salus_mvp/visitas"
     series.resource.type = "global"
@@ -26,9 +29,7 @@ def enviar_metricas():
         }
     )
 
-    value = monitoring_v3.TypedValue(
-        double_value=1.0
-    )  # Siempre +1 visita por cada solicitud
+    value = monitoring_v3.TypedValue(double_value=1.0)  # +1 visita por cada request
     point = monitoring_v3.Point({"interval": interval, "value": value})
     series.points.append(point)
 
