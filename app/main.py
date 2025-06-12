@@ -1,51 +1,44 @@
-from flask import Flask
-
-app = Flask(__name__)
-
-
-@app.route("/")
-def hello():
-    return "¡Salus MVP funcionando en la nube!"
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
-
-import os
-from flask import Flask
-from google.cloud import monitoring_v3
-from google.auth import default
-from datetime import datetime
+ffrom flask import Flask
 import time
+import logging
+from google.cloud import monitoring_v3
 
 app = Flask(__name__)
 
-# Configura el cliente de Monitoring
-credentials, project_id = default()
-client = monitoring_v3.MetricServiceClient(credentials=credentials)
-project_name = f"projects/{project_id}"
+# Configura el logging para que los mensajes se vean en Cloud Logging
+logging.basicConfig(level=logging.INFO)
 
+# ID de tu proyecto en GCP
+PROJECT_ID = "virtual-muse-460520-u9"
 
-# Función para enviar una métrica personalizada
 def enviar_metricas():
+    logging.info("Enviando métrica personalizada desde salus-mvp")
+
+    client = monitoring_v3.MetricServiceClient()
+    project_name = f"projects/{PROJECT_ID}"
+
     series = monitoring_v3.TimeSeries()
-    series.metric.type = "custom.googleapis.com/salus/solicitudes_exitosas"
+    series.metric.type = "custom.googleapis.com/salus/mvp_availability"
     series.resource.type = "global"
+    series.resource.labels["project_id"] = PROJECT_ID
 
-    # Punto de datos con valor 1 (una solicitud exitosa)
-    point = series.points.add()
-    point.value.int64_value = 1
-    point.interval.end_time.seconds = int(time.time())
-    point.interval.end_time.nanos = int((time.time() % 1) * 10**9)
+    # Punto de datos con valor 1 (disponibilidad OK)
+    point = monitoring_v3.Point()
+    point.value.double_value = 1.0
+    now = time.time()
+    point.interval.end_time.seconds = int(now)
+    point.interval.end_time.nanos = int((now - int(now)) * 10**9)
 
+    series.points = [point]
+
+    # Envía la serie a Cloud Monitoring
     client.create_time_series(name=project_name, time_series=[series])
-
+    logging.info("✅ Métrica personalizada enviada correctamente.")
 
 @app.route("/")
 def hello():
     enviar_metricas()
     return "¡Salus MVP funcionando en la nube!"
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
