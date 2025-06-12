@@ -6,11 +6,6 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from datetime import datetime
 import time
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
-
-
 app = Flask(__name__)
 contador_visitas = 0
 
@@ -46,3 +41,7 @@ def enviar_metricas():
 def hello():
     enviar_metricas()
     return f"¡Hola desde Salus! Visitas: {contador_visitas}"
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
